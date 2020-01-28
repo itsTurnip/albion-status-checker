@@ -1,7 +1,7 @@
 package main
 
 import (
-	"albion-status-checker/checker"
+	"github.com/itsTurnip/albion-status-checker/checker"
 	"fmt"
 	"os"
 	"os/signal"

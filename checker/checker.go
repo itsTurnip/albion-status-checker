@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sync"
 	"time"
-	
 )
 
 // Default server status url
@@ -20,6 +19,7 @@ type Checker struct {
 	Client     *http.Client
 	lastStatus StatusMessage
 	Ticker     *time.Ticker
+	closed     bool
 	// Changes channel contains StatusMessages if there was server status change.
 	Changes chan StatusMessage
 
@@ -30,8 +30,9 @@ type Checker struct {
 func NewChecker() *Checker {
 	return &Checker{
 		Client:  http.DefaultClient,
-		Changes: make(chan StatusMessage),
+		Changes: make(chan StatusMessage, 1),
 		Ticker:  time.NewTicker(defaultInterval),
+		closed:  false,
 	}
 }
 
@@ -47,10 +48,10 @@ func (c *Checker) GetStatus() (message StatusMessage, err error) {
 		return
 	}
 	content, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
 
 	/* The server is sending a UTF-8 text string with a Byte Order Mark (BOM).
 	The BOM identifies that the text is UTF-8 encoded, but it should be removed before decoding.
@@ -69,7 +70,7 @@ func (c *Checker) CheckStatus() error {
 	}
 	c.Lock()
 	defer c.Unlock()
-	if c.lastStatus.Status != current.Status {
+	if !c.closed && c.lastStatus.Status != current.Status {
 		c.lastStatus = current
 		c.Changes <- current
 	}
@@ -88,8 +89,20 @@ func (c *Checker) Start() {
 
 // Stop stops checker Ticker and closes Changes channel
 func (c *Checker) Stop() {
-	c.Ticker.Stop()
-	close(c.Changes)
+	if !c.Closed() {
+		c.Lock()
+		defer c.Unlock()
+		c.Ticker.Stop()
+		close(c.Changes)
+		c.closed = true
+	}
+}
+
+// Closed returns current checker channel status
+func (c *Checker) Closed() bool {
+	c.RLock()
+	defer c.RUnlock()
+	return c.closed
 }
 
 // LastStatus returns latest StatusMessage

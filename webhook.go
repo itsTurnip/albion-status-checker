@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"albion-status-checker/checker"
+	"github.com/itsTurnip/albion-status-checker/checker"
 )
 
 type WebhookMessage struct {
