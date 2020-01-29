@@ -5,7 +5,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -35,7 +34,7 @@ type EmbedField struct {
 	Inline bool   `json:"inline"`
 }
 
-func SendStatusChangeWebhook(message checker.StatusMessage) {
+func SendStatusChangeWebhook(message checker.StatusMessage) error {
 	embed := &Embed{
 		Title:       "Статус сервера",
 		Description: "Изменился статус сервера",
@@ -64,10 +63,11 @@ func SendStatusChangeWebhook(message checker.StatusMessage) {
 			embed,
 		},
 	}
-	err := SendWebhookMessage(webhook_url, webhookMessage)
+	err := SendWebhookMessage(webhookURL, webhookMessage)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
+	return nil
 }
 func SendWebhookMessage(url string, message *WebhookMessage) error {
 	body, err := json.Marshal(message)

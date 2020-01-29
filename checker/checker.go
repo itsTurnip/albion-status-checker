@@ -3,10 +3,13 @@ package checker
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Default server status url
@@ -30,7 +33,7 @@ type Checker struct {
 func NewChecker() *Checker {
 	return &Checker{
 		Client:  http.DefaultClient,
-		Changes: make(chan StatusMessage, 1),
+		Changes: make(chan StatusMessage),
 		Ticker:  time.NewTicker(defaultInterval),
 		closed:  false,
 	}
@@ -45,6 +48,7 @@ func (c *Checker) GetStatus() (message StatusMessage, err error) {
 	request.Header.Set("User-Agent", "Albion status checker")
 	resp, err := c.Client.Do(request)
 	if err != nil {
+		log.Debugf("Error occured getting status.txt")
 		return
 	}
 	content, err := ioutil.ReadAll(resp.Body)
@@ -59,18 +63,24 @@ func (c *Checker) GetStatus() (message StatusMessage, err error) {
 	content = bytes.ReplaceAll(bytes.TrimSpace((bytes.TrimPrefix(content, []byte("\xef\xbb\xbf")))), []byte{'\n'}, []byte{' '})
 
 	err = json.Unmarshal(content, &message)
+	if err == nil {
+		log.Debugf("Retrieved server status: %s", message)
+	}
 	return
 }
 
 // CheckStatus checks current status of server and if it is different from last checking status sends change to Changes
 func (c *Checker) CheckStatus() error {
+	if c.Closed() {
+		return errors.New("Checker is closed")
+	}
 	current, err := c.GetStatus()
 	if err != nil {
 		return err
 	}
 	c.Lock()
 	defer c.Unlock()
-	if !c.closed && c.lastStatus.Status != current.Status {
+	if c.lastStatus.Status != current.Status {
 		c.lastStatus = current
 		c.Changes <- current
 	}
@@ -78,24 +88,35 @@ func (c *Checker) CheckStatus() error {
 }
 func (c *Checker) loop() {
 	for range c.Ticker.C {
-		c.CheckStatus()
+		log.Debug("Loop")
+		err := c.CheckStatus()
+		if err != nil {
+			log.Debugf("Error occured while retrieving server status: %s", err)
+		}
 	}
 }
 
 // Start starts checker goroutine
-func (c *Checker) Start() {
+func (c *Checker) Start() error {
+	if c.Closed() {
+		return errors.New("Checker is closed")
+	}
+	log.Debug("Starting looping goroutine")
 	go c.loop()
+	return nil
 }
 
 // Stop stops checker Ticker and closes Changes channel
-func (c *Checker) Stop() {
+func (c *Checker) Stop() error {
 	if !c.Closed() {
 		c.Lock()
 		defer c.Unlock()
 		c.Ticker.Stop()
 		close(c.Changes)
 		c.closed = true
+		return nil
 	}
+	return errors.New("Checker has been already stopped")
 }
 
 // Closed returns current checker channel status
