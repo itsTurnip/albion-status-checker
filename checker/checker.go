@@ -6,17 +6,18 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
-// Default server status url
-const url string = "http://live.albiononline.com/status.txt"
+// Default server status URL
+const defaultURL string = "http://live.albiononline.com/status.txt"
 
 // Default interval of status checking
-const defaultInterval time.Duration = 3 * time.Minute
+const defaultInterval time.Duration = 1 * time.Minute
 
 type Checker struct {
 	Client     *http.Client
@@ -32,7 +33,9 @@ type Checker struct {
 // NewChecker returns default Checker
 func NewChecker() *Checker {
 	return &Checker{
-		Client:  http.DefaultClient,
+		Client: &http.Client{
+			Timeout: 3 * time.Second,
+		},
 		Changes: make(chan StatusMessage),
 		Ticker:  time.NewTicker(defaultInterval),
 		closed:  false,
@@ -41,13 +44,21 @@ func NewChecker() *Checker {
 
 // GetStatus gets current status of albion server
 func (c *Checker) GetStatus() (message StatusMessage, err error) {
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, defaultURL, nil)
 	if err != nil {
 		return
 	}
 	request.Header.Set("User-Agent", "Albion status checker")
 	resp, err := c.Client.Do(request)
 	if err != nil {
+		if timerr, ok := err.(*url.Error); ok && timerr.Timeout() {
+			message = StatusMessage{
+				Status:  "timeout",
+				Message: "Connection is timed out. Possibly service outage or DDoS.",
+			}
+			err = nil
+			return
+		}
 		log.Debugf("Error occured getting status.txt")
 		return
 	}
@@ -79,11 +90,13 @@ func (c *Checker) CheckStatus() error {
 		return err
 	}
 	c.Lock()
-	defer c.Unlock()
 	if c.lastStatus.Status != current.Status {
 		c.lastStatus = current
+		c.Unlock()
 		c.Changes <- current
+		return nil
 	}
+	c.Unlock()
 	return nil
 }
 func (c *Checker) loop() {

@@ -42,16 +42,21 @@ func SendStatusChangeWebhook(message checker.StatusMessage) error {
 		URL:         "https://www.albionstatus.com/",
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
-	field := &EmbedField{}
+	field := &EmbedField{
+		Value: message.Message,
+	}
 	switch message.Status {
 	case "online":
 		embed.Color = 0x00FF00
 		field.Name = "Онлайн"
-		field.Value = message.Message
 	case "offline":
 		embed.Color = 0xFF0000
 		field.Name = "Оффлайн"
-		field.Value = message.Message
+	case "timeout":
+		embed.Color = 0x735184
+		field.Name = "Таймаут"
+	default:
+		field.Name = "?"
 	}
 	embed.Fields = []*EmbedField{
 		field,

@@ -15,7 +15,7 @@ var webhookURL string
 func main() {
 	ParseEnv()
 	if webhookURL == "" {
-		panic("Webhook url environment is not set")
+		panic("Webhook url environment variable is not set")
 	}
 	check := checker.NewChecker()
 	sc := make(chan os.Signal, 1)
