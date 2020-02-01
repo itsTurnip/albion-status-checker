@@ -14,15 +14,18 @@ import (
 )
 
 // Default server status URL
-const defaultURL string = "http://live.albiononline.com/status.txt"
+const DefaultURL string = "http://live.albiononline.com/status.txt"
 
 // Default interval of status checking
 const defaultInterval time.Duration = 1 * time.Minute
 
+// Checker is a struct used for periodical server status checks.
 type Checker struct {
 	Client     *http.Client
 	lastStatus StatusMessage
-	Ticker     *time.Ticker
+	Interval   time.Duration
+	ticker     *time.Ticker
+	c          chan bool
 	closed     bool
 	// Changes channel contains StatusMessages if there was server status change.
 	Changes chan StatusMessage
@@ -36,15 +39,14 @@ func NewChecker() *Checker {
 		Client: &http.Client{
 			Timeout: 3 * time.Second,
 		},
-		Changes: make(chan StatusMessage),
-		Ticker:  time.NewTicker(defaultInterval),
-		closed:  false,
+		Changes:  make(chan StatusMessage, 1),
+		Interval: defaultInterval,
 	}
 }
 
 // GetStatus gets current status of albion server
 func (c *Checker) GetStatus() (message StatusMessage, err error) {
-	request, err := http.NewRequest(http.MethodGet, defaultURL, nil)
+	request, err := http.NewRequest(http.MethodGet, DefaultURL, nil)
 	if err != nil {
 		return
 	}
@@ -59,7 +61,7 @@ func (c *Checker) GetStatus() (message StatusMessage, err error) {
 			err = nil
 			return
 		}
-		log.Debugf("Error occured getting status.txt")
+		log.Debugf("Error occurred getting status.txt")
 		return
 	}
 	content, err := ioutil.ReadAll(resp.Body)
@@ -70,7 +72,8 @@ func (c *Checker) GetStatus() (message StatusMessage, err error) {
 
 	/* The server is sending a UTF-8 text string with a Byte Order Mark (BOM).
 	The BOM identifies that the text is UTF-8 encoded, but it should be removed before decoding.
-	https://stackoverflow.com/q/31398044 */
+	https://stackoverflow.com/q/31398044
+	Line breaks should be replaced with whitespaces because JSON standard doesn't allow this in strings. */
 	content = bytes.ReplaceAll(bytes.TrimSpace((bytes.TrimPrefix(content, []byte("\xef\xbb\xbf")))), []byte{'\n'}, []byte{' '})
 
 	err = json.Unmarshal(content, &message)
@@ -99,12 +102,18 @@ func (c *Checker) CheckStatus() error {
 	c.Unlock()
 	return nil
 }
+
 func (c *Checker) loop() {
-	for range c.Ticker.C {
-		log.Debug("Loop")
-		err := c.CheckStatus()
-		if err != nil {
-			log.Debugf("Error occured while retrieving server status: %s", err)
+	for {
+		select {
+		case <-c.ticker.C:
+			log.Debug("Loop")
+			err := c.CheckStatus()
+			if err != nil {
+				log.Debugf("Error occurred while retrieving server status: %s", err)
+			}
+		case <-c.c:
+			return
 		}
 	}
 }
@@ -114,6 +123,8 @@ func (c *Checker) Start() error {
 	if c.Closed() {
 		return errors.New("Checker is closed")
 	}
+	c.c = make(chan bool)
+	c.ticker = time.NewTicker(c.Interval)
 	log.Debug("Starting looping goroutine")
 	go c.loop()
 	return nil
@@ -121,15 +132,19 @@ func (c *Checker) Start() error {
 
 // Stop stops checker Ticker and closes Changes channel
 func (c *Checker) Stop() error {
-	if !c.Closed() {
-		c.Lock()
-		defer c.Unlock()
-		c.Ticker.Stop()
-		close(c.Changes)
-		c.closed = true
-		return nil
+	if c.c == nil {
+		return errors.New("Checker is not running")
 	}
-	return errors.New("Checker has been already stopped")
+	if c.Closed() {
+		return errors.New("Checker has been already stopped")
+	}
+	c.Lock()
+	defer c.Unlock()
+	c.ticker.Stop()
+	c.c <- true
+	close(c.Changes)
+	return nil
+
 }
 
 // Closed returns current checker channel status

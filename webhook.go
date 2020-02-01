@@ -34,7 +34,7 @@ type EmbedField struct {
 	Inline bool   `json:"inline"`
 }
 
-func SendStatusChangeWebhook(message checker.StatusMessage) error {
+func SendStatusChangeWebhook(webhookURL string, message checker.StatusMessage) error {
 	embed := &Embed{
 		Title:       "Статус сервера",
 		Description: "Изменился статус сервера",
