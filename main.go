@@ -14,6 +14,7 @@ func main() {
 	if config.WebhookURL == "" {
 		panic("Webhook url environment variable is not set")
 	}
+	log.SetLevel(config.LogLevel)
 	check := checker.NewChecker()
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
