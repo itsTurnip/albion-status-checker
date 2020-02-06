@@ -1,48 +1,21 @@
 package main
 
-// TODO: Create a better package to work with webhooks
-
 import (
-	"bytes"
-	"encoding/json"
-	"net/http"
 	"time"
 
 	"github.com/itsTurnip/albion-status-checker/checker"
+	"github.com/itsTurnip/dishooks"
 )
 
-type WebhookMessage struct {
-	Content   string   `json:"content"`
-	Username  string   `json:"username"`
-	AvatarURL string   `json:"avatar_url"`
-	Embeds    []*Embed `json:"embeds"`
-}
-
-type Embed struct {
-	Title       string        `json:"title"`
-	Type        string        `json:"type"`
-	Description string        `json:"description"`
-	URL         string        `json:"url"`
-	Timestamp   string        `json:"timestamp"`
-	Color       int           `json:"color"`
-	Fields      []*EmbedField `json:"fields"`
-}
-
-type EmbedField struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Inline bool   `json:"inline"`
-}
-
-func SendStatusChangeWebhook(webhookURL string, message checker.StatusMessage) error {
-	embed := &Embed{
+func SendStatusChangeWebhook(webhook *dishooks.Webhook, message checker.StatusMessage) error {
+	embed := &dishooks.Embed{
 		Title:       "Статус сервера",
 		Description: "Изменился статус сервера",
 		Type:        "rich",
 		URL:         "https://www.albionstatus.com/",
-		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+		Timestamp:   dishooks.FormatTime(time.Now()),
 	}
-	field := &EmbedField{
+	field := &dishooks.EmbedField{
 		Value: message.Message,
 	}
 	switch message.Status {
@@ -58,28 +31,17 @@ func SendStatusChangeWebhook(webhookURL string, message checker.StatusMessage) e
 	default:
 		field.Name = "?"
 	}
-	embed.Fields = []*EmbedField{
+	embed.Fields = []*dishooks.EmbedField{
 		field,
 	}
-	webhookMessage := &WebhookMessage{
+	webhookMessage := &dishooks.WebhookMessage{
 		// Content:   "@here",
 		AvatarURL: "http://www.fau.edu/oit/labs/labimages/Status-dialog-information-icon.png",
-		Embeds: []*Embed{
+		Embeds: []*dishooks.Embed{
 			embed,
 		},
 	}
-	err := SendWebhookMessage(webhookURL, webhookMessage)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func SendWebhookMessage(url string, message *WebhookMessage) error {
-	body, err := json.Marshal(message)
-	if err != nil {
-		return err
-	}
-	_, err = http.Post(url, "application/json", bytes.NewBuffer(body))
+	_, err := webhook.SendMessage(webhookMessage)
 	if err != nil {
 		return err
 	}

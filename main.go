@@ -11,7 +11,7 @@ import (
 
 func main() {
 	config := parseEnv()
-	if config.WebhookURL == "" {
+	if config.Webhook == nil {
 		panic("Webhook url environment variable is not set")
 	}
 	log.SetLevel(config.LogLevel)
@@ -32,7 +32,7 @@ func main() {
 	check.Start()
 	log.Info("Started checking")
 	for message := range check.Changes {
-		err := SendStatusChangeWebhook(config.WebhookURL, message)
+		err := SendStatusChangeWebhook(config.Webhook, message)
 		log.Errorf("Error occured sending status change: %s", err)
 	}
 }

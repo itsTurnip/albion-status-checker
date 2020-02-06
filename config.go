@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/itsTurnip/dishooks"
 	"strings"
 	"syscall"
 
@@ -10,13 +11,15 @@ import (
 // Config doesn't need to be explained
 type Config struct {
 	// WebhookURL of discord webhook
-	WebhookURL string
+	Webhook *dishooks.Webhook
 	// Logging level
-	LogLevel   log.Level
+	LogLevel log.Level
 }
 
 func parseEnv() (c *Config) {
-	c = &Config{}
+	c = &Config{
+		LogLevel: log.InfoLevel,
+	}
 	env := syscall.Environ()
 	for _, line := range env {
 		fields := strings.Split(line, "=")
@@ -24,7 +27,12 @@ func parseEnv() (c *Config) {
 		value := strings.TrimSpace(fields[1])
 		switch key {
 		case "WEBHOOK_URL":
-			c.WebhookURL = value
+			webhook, err := dishooks.WebhookFromURL(value)
+			if err != nil {
+				log.Error("Error occurred while getting webhook: ", err)
+				break
+			}
+			c.Webhook = webhook
 		case "LOGLEVEL":
 			switch value {
 			case "INFO":
