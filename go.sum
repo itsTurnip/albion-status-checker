@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/itsTurnip/dishooks v0.0.0-20200206085407-029af2eb2dee h1:fF6iwtuqq3VlcZBx/oXpHMmFOQ+ZLCukeePP1g3jz/k=
-github.com/itsTurnip/dishooks v0.0.0-20200206085407-029af2eb2dee/go.mod h1:O/wGqEBiZF53Q9O7jrJVIz1oXLlxVA1CfkzKMn3HUDM=
+github.com/itsTurnip/dishooks v0.0.0-20200206125049-b4fc7c7b042e h1:7/ig5iBHnQclaKaaBKPUkQGjaxz04H6auAArkKj5E4o=
+github.com/itsTurnip/dishooks v0.0.0-20200206125049-b4fc7c7b042e/go.mod h1:O/wGqEBiZF53Q9O7jrJVIz1oXLlxVA1CfkzKMn3HUDM=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

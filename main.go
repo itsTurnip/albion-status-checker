@@ -20,19 +20,27 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	go func() {
 		<-sc
-		check.Stop()
+		err := check.Stop()
+		if err != nil {
+			log.Errorf("Error stopping checker %s", err)
+		}
 	}()
 	log.Info("Getting current status...")
 	err := check.CheckStatus()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	status := <-check.Changes
 	log.Info("Current server status: ", status.Status)
-	check.Start()
+	err = check.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Info("Started checking")
 	for message := range check.Changes {
 		err := SendStatusChangeWebhook(config.Webhook, message)
-		log.Errorf("Error occured sending status change: %s", err)
+		if err != nil {
+			log.Errorf("Error occurred sending status change: %s", err)
+		}
 	}
 }
