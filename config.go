@@ -10,8 +10,8 @@ import (
 
 // Config doesn't need to be explained
 type Config struct {
-	// WebhookURL of discord webhook
-	Webhook *dishooks.Webhook
+	// Webhooks structs of discord webhooks
+	Webhooks []*dishooks.Webhook
 	// Logging level
 	LogLevel log.Level
 }
@@ -27,16 +27,17 @@ func parseEnv() (c *Config) {
 		value := strings.TrimSpace(fields[1])
 		switch key {
 		case "WEBHOOK_URL":
-			webhook, err := dishooks.WebhookFromURL(value)
-			if err != nil {
-				log.Error("Error occurred while getting webhook: ", err)
-				break
+			links := strings.Split(value, ",")
+			for _, link := range links {
+				webhook, err := dishooks.WebhookFromURL(link)
+				if err != nil {
+					log.Error("Error occurred while getting webhook: ", err)
+					continue
+				}
+				c.Webhooks = append(c.Webhooks, webhook)
 			}
-			c.Webhook = webhook
 		case "LOGLEVEL":
 			switch value {
-			case "INFO":
-				c.LogLevel = log.InfoLevel
 			case "DEBUG":
 				c.LogLevel = log.DebugLevel
 			case "ERROR":
